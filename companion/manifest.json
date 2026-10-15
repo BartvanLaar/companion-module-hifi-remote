@@ -1,0 +1,34 @@
+{
+  "id": "hifi-remote",
+  "name": "hifi-remote",
+  "shortname": "HiFi Remote",
+  "description": "Control network music players on your local network: playback, volume, shuffle/repeat and internet radio streams. Works with BluOS.",
+  "version": "0.0.0",
+  "license": "MIT",
+  "repository": "git+https://github.com/BartvanLaar/companion-module-hifi-remote.git",
+  "bugs": "https://github.com/BartvanLaar/companion-module-hifi-remote/issues",
+  "maintainers": [
+    {
+      "name": "Bart",
+      "email": ""
+    }
+  ],
+  "runtime": {
+    "type": "node22",
+    "api": "nodejs-ipc",
+    "apiVersion": "0.0.0",
+    "entrypoint": "../main.js"
+  },
+  "legacyIds": [],
+  "manufacturer": "Generic",
+  "products": ["Network music players (works with BluOS)"],
+  "keywords": [
+    "BluOS",
+    "Audio",
+    "Music",
+    "Streaming",
+    "Radio",
+    "Hi-Fi",
+    "Multiroom"
+  ]
+}

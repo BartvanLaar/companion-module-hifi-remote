@@ -1,0 +1,43 @@
+{
+	"name": "hifi-remote",
+	"version": "1.0.0",
+	"description": "Bitfocus Companion module for controlling network music players. Works with BluOS.",
+	"main": "main.js",
+	"scripts": {
+		"format": "prettier -w .",
+		"test": "node --test \"test/**/*.test.js\"",
+		"package": "companion-module-build",
+		"build": "yarn format && yarn package"
+	},
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/BartvanLaar/companion-module-hifi-remote.git"
+	},
+	"bugs": {
+		"url": "https://github.com/BartvanLaar/companion-module-hifi-remote/issues"
+	},
+	"homepage": "https://github.com/BartvanLaar/companion-module-hifi-remote#readme",
+	"keywords": [
+		"bitfocus",
+		"companion",
+		"companion-module",
+		"bluos",
+		"hifi",
+		"audio",
+		"streaming"
+	],
+	"engines": {
+		"node": "^22.20",
+		"yarn": "^4"
+	},
+	"dependencies": {
+		"@companion-module/base": "~1.12.1",
+		"fast-xml-parser": "^5.3.3"
+	},
+	"devDependencies": {
+		"@companion-module/tools": "^2.4.2",
+		"prettier": "^3.6.2"
+	},
+	"packageManager": "yarn@4.10.3"
+}
