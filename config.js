@@ -48,7 +48,7 @@ function GetConfigurationFields(self) {
       type: "number",
       label: "Reconnect / Fallback Poll Interval (seconds)",
       tooltip:
-        "Status updates are pushed by the player instantly. This interval is only used to retry while the player is unreachable, or to poll players that don't support instant updates.",
+        "Status updates are pushed by the player instantly. This interval is only used to retry while the player is unreachable, or to poll players that don't support instant updates (at most every 30 seconds).",
       default: DEFAULTS.pollIntervalSeconds,
       min: 1,
       max: 3600,

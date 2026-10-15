@@ -214,6 +214,8 @@ class FakePlayer {
       `<service>${this.service}</service>` +
       `<shuffle>${this.shuffle}</shuffle><repeat>${this.repeat}</repeat>` +
       `<volume>${this.volume}</volume><mute>${this.mute}</mute>` +
+      `<name>${this.title}</name><artist>${this.artist}</artist>` +
+      `<album>${this.album}</album>` +
       `<title1>${this.title}</title1><title2>${this.artist}</title2>` +
       `<title3>${this.album}</title3><image>${this.image}</image></status>`
     );
@@ -233,6 +235,8 @@ async function createInstance(config = {}) {
   const player = new FakePlayer();
   player.install();
   const instance = new ModuleInstance();
+  instance.minStatusRequestSpacingMs = 0;
+  instance.minRegularPollIntervalSeconds = 0;
   await instance.init({
     host: "player.local",
     port: 11000,

@@ -1,7 +1,12 @@
 const { describe, it, afterEach } = require("node:test");
 const assert = require("node:assert/strict");
 
-const { createInstance, InstanceStatus, waitFor } = require("./helpers");
+const {
+  ModuleInstance,
+  createInstance,
+  InstanceStatus,
+  waitFor,
+} = require("./helpers");
 
 describe("status polling", () => {
   let context;
@@ -139,11 +144,11 @@ describe("status polling", () => {
       await context.instance.updateDeviceStatusAsync();
       assert.equal(
         context.instance.variableValues.artworkUrl,
-        "http://player.local:11000/Artwork?service=Spotify&id=1",
+        "http://player.local:11000/Artwork?service=Spotify&id=1&followRedirects=1",
       );
     });
 
-    it("prefers the dedicated name, artist and album elements", async () => {
+    it("reads track info and the now playing lines separately", async () => {
       context = await createInstance();
       context.player.statusBody =
         '<status etag="9"><name>Name</name><artist>Artist</artist>' +
@@ -154,6 +159,36 @@ describe("status polling", () => {
       assert.deepEqual(
         [values.title, values.artist, values.album],
         ["Name", "Artist", "Album"],
+      );
+      assert.deepEqual(
+        [
+          values.nowPlayingLine1,
+          values.nowPlayingLine2,
+          values.nowPlayingLine3,
+        ],
+        ["T1", "T2", "T3"],
+      );
+    });
+
+    it("has now playing lines for radio without artist or album", async () => {
+      context = await createInstance();
+      context.player.statusBody =
+        '<status etag="9"><title1>Radio 1</title1>' +
+        "<title2>Live news</title2></status>";
+      await context.instance.updateDeviceStatusAsync();
+      const values = context.instance.variableValues;
+      assert.equal(values.nowPlayingLine1, "Radio 1");
+      assert.equal(values.nowPlayingLine2, "Live news");
+      assert.equal(values.artist, "");
+    });
+
+    it("leaves artwork from other hosts unchanged", async () => {
+      context = await createInstance();
+      context.player.image = "https://img.example/Artwork?id=1";
+      await context.instance.updateDeviceStatusAsync();
+      assert.equal(
+        context.instance.variableValues.artworkUrl,
+        "https://img.example/Artwork?id=1",
       );
     });
 
@@ -277,6 +312,31 @@ describe("status polling", () => {
       // With a 3600s interval no further requests may be made
       await new Promise((resolve) => setTimeout(resolve, 50));
       assert.equal(player.statusRequests.length, countAfterStart);
+    });
+
+    it("keeps status requests at least the minimum spacing apart", async () => {
+      context = await createInstance();
+      const { instance, player } = context;
+      instance.minStatusRequestSpacingMs = 200;
+      await instance.configUpdated({ ...instance.config });
+      await waitFor(() => player.waitingLongPolls === 1);
+      player.requests = [];
+
+      // Several changes in a row must not cause a burst of status requests
+      for (let i = 0; i < 5; i++) {
+        player.state = i % 2 ? "play" : "pause";
+        player.changed();
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      assert.equal(player.statusRequests.length, 0);
+      await waitFor(() => player.statusRequests.length === 1);
+    });
+
+    it("polls without etag at most every 30 seconds by default", () => {
+      const instance = new ModuleInstance();
+      assert.equal(instance.minRegularPollIntervalSeconds, 30);
+      assert.equal(instance.minStatusRequestSpacingMs, 1000);
     });
 
     it("polls on the interval when the player sends no etag", async () => {

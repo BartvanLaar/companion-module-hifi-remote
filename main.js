@@ -20,6 +20,10 @@ const REQUEST_TIMEOUT_MS = 5000;
 const LONG_POLL_TIMEOUT_SECONDS = 100;
 // Extra time on top of the long poll before we consider the request hung
 const LONG_POLL_GRACE_MS = 10000;
+// BluOS API rules: never send two status requests less than a second apart,
+// and without long polling, poll at most once every 30 seconds
+const MIN_STATUS_REQUEST_SPACING_MS = 1000;
+const MIN_REGULAR_POLL_INTERVAL_SECONDS = 30;
 
 // BluOS repeat states
 const REPEAT_QUEUE = 0;
@@ -51,6 +55,9 @@ class ModuleInstance extends InstanceBase {
     this._pollAbortController = null;
     this._commandCount = 0;
     this._variableValues = {};
+    this._lastStatusRequestAt = 0;
+    this.minStatusRequestSpacingMs = MIN_STATUS_REQUEST_SPACING_MS;
+    this.minRegularPollIntervalSeconds = MIN_REGULAR_POLL_INTERVAL_SECONDS;
     this.pollIntervalSeconds = DEFAULTS.pollIntervalSeconds;
     this.currentStream = null;
     this.playbackSource = null;
@@ -65,6 +72,9 @@ class ModuleInstance extends InstanceBase {
     this.title = null;
     this.artist = null;
     this.album = null;
+    this.nowPlayingLine1 = null;
+    this.nowPlayingLine2 = null;
+    this.nowPlayingLine3 = null;
     this.artworkUrl = null;
   }
 
@@ -352,6 +362,7 @@ class ModuleInstance extends InstanceBase {
     }
 
     const commandCount = this._commandCount;
+    this._lastStatusRequestAt = Date.now();
     const statusResponse = await this.requestAsync(
       path,
       "Failed to get player status",
@@ -406,9 +417,14 @@ class ModuleInstance extends InstanceBase {
         playbackSource && playbackSource !== "stream"
           ? null
           : this.currentStream,
-      title: getText(status.name ?? status.title1) || null,
-      artist: getText(status.artist ?? status.title2) || null,
-      album: getText(status.album ?? status.title3) || null,
+      title: getText(status.name) || null,
+      artist: getText(status.artist) || null,
+      album: getText(status.album) || null,
+      // The player's own lines for displaying what is playing, which also
+      // work for radio and inputs that have no artist or album
+      nowPlayingLine1: getText(status.title1) || null,
+      nowPlayingLine2: getText(status.title2) || null,
+      nowPlayingLine3: getText(status.title3) || null,
       artworkUrl: this.getArtworkUrl(getText(status.image)),
     });
   }
@@ -417,8 +433,17 @@ class ModuleInstance extends InstanceBase {
     if (!image) {
       return null;
     }
+    if (!image.startsWith("/")) {
+      return image;
+    }
     // The player returns its own artwork as a path, e.g. /Artwork?service=...
-    return image.startsWith("/") ? `${this.baseUrl}${image}` : image;
+    // followRedirects=1 makes the player return the image instead of a
+    // redirect, as recommended by the BluOS API
+    const url = new URL(image, this.baseUrl);
+    if (url.pathname === "/Artwork") {
+      url.searchParams.set("followRedirects", "1");
+    }
+    return url.toString();
   }
 
   async startStatusPollingAsync() {
@@ -443,8 +468,22 @@ class ModuleInstance extends InstanceBase {
     while (generation === this._pollGeneration) {
       // Wait before retrying a failed request, and before polling again when
       // the player doesn't support long polling (it sent no etag)
-      if (!isUpdated || !this._statusEtag) {
-        await delayAsync(this.pollIntervalSeconds * 1000, signal);
+      let delayMs = 0;
+      if (!isUpdated) {
+        delayMs = this.pollIntervalSeconds * 1000;
+      } else if (!this._statusEtag) {
+        delayMs =
+          Math.max(
+            this.pollIntervalSeconds,
+            this.minRegularPollIntervalSeconds,
+          ) * 1000;
+      }
+      delayMs = Math.max(
+        delayMs,
+        this._lastStatusRequestAt + this.minStatusRequestSpacingMs - Date.now(),
+      );
+      if (delayMs > 0) {
+        await delayAsync(delayMs, signal);
         if (generation !== this._pollGeneration) {
           return;
         }
@@ -498,6 +537,9 @@ class ModuleInstance extends InstanceBase {
       title: this.title ?? "",
       artist: this.artist ?? "",
       album: this.album ?? "",
+      nowPlayingLine1: this.nowPlayingLine1 ?? "",
+      nowPlayingLine2: this.nowPlayingLine2 ?? "",
+      nowPlayingLine3: this.nowPlayingLine3 ?? "",
       artworkUrl: this.artworkUrl ?? "",
     };
 
