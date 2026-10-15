@@ -13,6 +13,7 @@ class FakeInstanceBase {
     this.statuses = [];
     this.variableValues = {};
     this.feedbackChecks = [];
+    this.label = "hifi-remote";
   }
   log(level, message) {
     this.logs.push({ level, message });
@@ -35,9 +36,10 @@ class FakeInstanceBase {
   setVariableValues(values) {
     Object.assign(this.variableValues, values);
   }
-  checkFeedbacks() {
+  checkFeedbacks(...feedbackIds) {
     // Snapshot the state the feedbacks would see at this moment
     this.feedbackChecks.push({
+      feedbackIds,
       isPlaying: this.isPlaying,
       isShuffleEnabled: this.isShuffleEnabled,
       isRepeatEnabled: this.isRepeatEnabled,
@@ -78,23 +80,54 @@ class FakePlayer {
     this.service = "Spotify";
     this.shuffle = 0;
     this.repeat = 2;
+    this.volume = 30;
+    this.mute = 0;
+    this.title = "";
+    this.artist = "";
+    this.album = "";
+    this.image = "";
     this.statusBody = null;
+    this.etag = 1;
+    this.supportsLongPolling = true;
+    this._waitingForChange = [];
   }
 
   install() {
     this._originalFetch = globalThis.fetch;
-    globalThis.fetch = (url) => this.handle(new URL(url));
+    globalThis.fetch = (url, options = {}) =>
+      this.handle(new URL(url), options.signal);
   }
 
   uninstall() {
     globalThis.fetch = this._originalFetch;
   }
 
+  /** Commands sent to the player, without the status requests */
   get paths() {
-    return this.requests.map((url) => url.pathname + url.search);
+    return this.requests
+      .filter((url) => url.pathname !== "/Status")
+      .map((url) => url.pathname + url.search);
   }
 
-  async handle(url) {
+  get statusRequests() {
+    return this.requests.filter((url) => url.pathname === "/Status");
+  }
+
+  get waitingLongPolls() {
+    return this._waitingForChange.length;
+  }
+
+  /** Bumps the etag and answers the waiting long polls, like a real player */
+  changed() {
+    this.etag++;
+    const waiting = this._waitingForChange;
+    this._waitingForChange = [];
+    for (const resolve of waiting) {
+      resolve();
+    }
+  }
+
+  async handle(url, signal) {
     if (!this.online) {
       throw new TypeError("fetch failed", {
         cause: new Error(`connect ECONNREFUSED ${url.host}`),
@@ -107,6 +140,17 @@ class FakePlayer {
     }
 
     const params = url.searchParams;
+    if (url.pathname === "/Status") {
+      if (
+        this.supportsLongPolling &&
+        params.has("timeout") &&
+        params.get("etag") === String(this.etag)
+      ) {
+        await this.waitForChange(signal);
+      }
+      return new Response(this.statusBody ?? this.statusXml());
+    }
+
     switch (url.pathname) {
       case "/Play":
         this.state = params.has("url") ? "stream" : "play";
@@ -126,17 +170,52 @@ class FakePlayer {
       case "/Repeat":
         this.repeat = Number(params.get("state"));
         break;
-      case "/Status":
-        return new Response(this.statusBody ?? this.statusXml());
+      case "/Volume":
+        if (params.has("db")) {
+          this.volume += Number(params.get("db"));
+        }
+        if (params.has("level")) {
+          this.volume = Number(params.get("level"));
+        }
+        if (params.has("mute")) {
+          this.mute = Number(params.get("mute"));
+        }
+        break;
     }
+    this.changed();
     return new Response("<ok/>");
   }
 
+  waitForChange(signal) {
+    return new Promise((resolve, reject) => {
+      const onChange = () => {
+        signal?.removeEventListener("abort", onAbort);
+        resolve();
+      };
+      const onAbort = () => {
+        this._waitingForChange = this._waitingForChange.filter(
+          (waiting) => waiting !== onChange,
+        );
+        reject(new DOMException("This operation was aborted", "AbortError"));
+      };
+      if (signal?.aborted) {
+        onAbort();
+        return;
+      }
+      signal?.addEventListener("abort", onAbort, { once: true });
+      this._waitingForChange.push(onChange);
+    });
+  }
+
   statusXml() {
+    const etag = this.supportsLongPolling ? ` etag="${this.etag}"` : "";
     return (
-      `<status etag="1"><state>${this.state}</state>` +
+      `<status${etag}><state>${this.state}</state>` +
       `<service>${this.service}</service>` +
-      `<shuffle>${this.shuffle}</shuffle><repeat>${this.repeat}</repeat></status>`
+      `<shuffle>${this.shuffle}</shuffle><repeat>${this.repeat}</repeat>` +
+      `<volume>${this.volume}</volume><mute>${this.mute}</mute>` +
+      `<title1>${this.title}</title1><title2>${this.artist}</title2>` +
+      `<title3>${this.album}</title3><image>${this.image}</image></status>`
     );
   }
 }
@@ -168,6 +247,20 @@ async function createInstance(config = {}) {
   return { instance, player, cleanup };
 }
 
+/**
+ * Waits until `condition` returns true, for things that happen in the
+ * background status loop.
+ */
+async function waitFor(condition, timeoutMs = 2000) {
+  const start = Date.now();
+  while (!(await condition())) {
+    if (Date.now() - start > timeoutMs) {
+      throw new Error("Timed out waiting for condition");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+}
+
 async function runAction(instance, actionId, options = {}, variables = {}) {
   await instance.actionDefinitions[actionId].callback(
     { options },
@@ -189,4 +282,5 @@ module.exports = {
   createInstance,
   runAction,
   runFeedback,
+  waitFor,
 };

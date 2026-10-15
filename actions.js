@@ -3,97 +3,97 @@ module.exports = function (self) {
     pause: {
       name: "Pause",
       options: [],
-      callback: async (event) => {
-        await self.pauseAsync();
-      },
+      callback: () => self.pauseAsync(),
     },
     stopPlayback: {
       name: "Stop playback",
       options: [],
-      callback: async (event) => {
-        await self.stopAsync();
-      },
+      callback: () => self.stopAsync(),
     },
     togglePlayback: {
       name: "Toggle Play/Pause",
       options: [],
-      callback: async (event) => {
-        if (self.isPlaying) {
-          await self.pauseAsync();
-        } else {
-          await self.resumeAsync();
-        }
-      },
+      callback: () => (self.isPlaying ? self.pauseAsync() : self.resumeAsync()),
     },
     volumeUp: {
       name: "Volume Up",
       options: [],
-      callback: async (event) => {
-        await self.increaseVolumeAsync();
-      },
+      callback: () => self.increaseVolumeAsync(),
     },
     volumeDown: {
       name: "Volume Down",
       options: [],
-      callback: async (event) => {
-        await self.decreaseVolumeAsync();
-      },
+      callback: () => self.decreaseVolumeAsync(),
+    },
+    setVolume: {
+      name: "Set Volume",
+      options: [
+        {
+          type: "number",
+          id: "level",
+          label: "Volume (0-100)",
+          default: 30,
+          min: 0,
+          max: 100,
+          range: true,
+        },
+      ],
+      callback: (event) => self.setVolumeAsync(event.options.level),
+    },
+    toggleMute: {
+      name: "Toggle Mute",
+      options: [],
+      callback: () => self.toggleMuteAsync(),
+    },
+    mute: {
+      name: "Mute",
+      options: [],
+      callback: () => self.setMuteAsync(true),
+    },
+    unmute: {
+      name: "Unmute",
+      options: [],
+      callback: () => self.setMuteAsync(false),
     },
     resume: {
       name: "Resume",
       options: [],
-      callback: async (event) => {
-        await self.resumeAsync();
-      },
+      callback: () => self.resumeAsync(),
     },
     next: {
       name: "Next Track",
       options: [],
-      callback: async (event) => {
-        await self.nextAsync();
-      },
+      callback: () => self.nextAsync(),
     },
     previous: {
       name: "Previous Track",
       options: [],
-      callback: async (event) => {
-        await self.previousAsync();
-      },
+      callback: () => self.previousAsync(),
     },
     toggleShuffle: {
       name: "Toggle Shuffle",
       options: [],
-      callback: async (event) => {
-        await self.toggleShuffleAsync();
-      },
+      callback: () => self.toggleShuffleAsync(),
     },
     toggleRepeat: {
       name: "Toggle Repeat",
       options: [],
-      callback: async (event) => {
-        await self.toggleRepeatAsync();
-      },
+      callback: () => self.toggleRepeatAsync(),
     },
     repeatQueue: {
       name: "Set Repeat Queue",
       options: [],
-      callback: async (event) => {
-        await self.turnOnRepeatCurrentQueueAsync();
-      },
+      callback: () => self.turnOnRepeatCurrentQueueAsync(),
     },
     repeatTrack: {
       name: "Set Repeat Track",
       options: [],
-      callback: async (event) => {
-        await self.turnOnRepeatCurrentTrackAsync();
-      },
+      callback: () => self.turnOnRepeatCurrentTrackAsync(),
     },
     disableRepeat: {
       name: "Disable Repeat",
       options: [],
-      callback: async (event) => {
-        await self.disableRepeatAsync();
-      },
+      callback: () => self.disableRepeatAsync(),
     },
     setStream: {
       name: "Set Stream",

@@ -111,5 +111,15 @@ module.exports = function (self) {
         return self.playbackSource === "bluetooth";
       },
     },
+    isMuted: {
+      name: "Muted",
+      type: "boolean",
+      description: "True when the player is muted",
+      defaultStyle: activeStyle,
+      options: [],
+      callback: () => {
+        return self.isMuted === true;
+      },
+    },
   });
 };
