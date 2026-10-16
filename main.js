@@ -159,6 +159,8 @@ class ModuleInstance extends InstanceBase {
     try {
       response = await fetch(`${this.baseUrl}${path}`, {
         method: "GET",
+        // The player answers directly, so never follow it to another host
+        redirect: "error",
         signal: signal
           ? AbortSignal.any([timeoutSignal, signal])
           : timeoutSignal,
@@ -232,6 +234,10 @@ class ModuleInstance extends InstanceBase {
   async setStreamSourceAsync(streamUrl) {
     if (!streamUrl) {
       this.log("error", "No stream URL provided");
+      return;
+    }
+    if (!isHttpUrl(streamUrl)) {
+      this.log("error", `Not an http(s) stream URL: ${streamUrl}`);
       return;
     }
 
@@ -433,8 +439,9 @@ class ModuleInstance extends InstanceBase {
     if (!image) {
       return null;
     }
-    if (!image.startsWith("/")) {
-      return image;
+    // Only pass on web URLs, never e.g. file: or javascript: URLs
+    if (!image.startsWith("/") || image.startsWith("//")) {
+      return isHttpUrl(image) ? image : null;
     }
     // The player returns its own artwork as a path, e.g. /Artwork?service=...
     // followRedirects=1 makes the player return the image instead of a
@@ -567,6 +574,15 @@ function getRepeatState(repeatState) {
     isRepeatCurrentTrack: repeatState === REPEAT_TRACK,
     isRepeatCurrentQueue: repeatState === REPEAT_QUEUE,
   };
+}
+
+function isHttpUrl(text) {
+  try {
+    const { protocol } = new URL(text);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 /**
