@@ -258,6 +258,18 @@ describe("actions", () => {
       );
     });
 
+    it("does not play URLs other than http(s)", async () => {
+      const { instance, player } = await setup();
+      await runAction(
+        instance,
+        "setStream",
+        { selectedStreamUrl: "$(internal:station)" },
+        { "internal:station": "file:///etc/passwd" },
+      );
+      assert.deepEqual(player.paths, []);
+      assert.equal(instance.currentStream, null);
+    });
+
     it("does not play when the URL is empty", async () => {
       const { instance, player } = await setup();
       await runAction(instance, "setStream", { selectedStreamUrl: "  " });
