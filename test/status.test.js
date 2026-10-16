@@ -192,6 +192,16 @@ describe("status polling", () => {
       );
     });
 
+    it("drops artwork URLs other than http(s)", async () => {
+      context = await createInstance();
+      for (const image of ["javascript:alert(1)", "file:///etc/passwd", "//"]) {
+        context.player.image = image;
+        context.player.changed();
+        await context.instance.updateDeviceStatusAsync();
+        assert.equal(context.instance.variableValues.artworkUrl, "", image);
+      }
+    });
+
     it("reads elements that have attributes", async () => {
       context = await createInstance();
       context.player.statusBody =
