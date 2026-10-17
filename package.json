@@ -1,6 +1,6 @@
 {
 	"name": "hifi-remote",
-	"version": "1.1.3",
+	"version": "1.1.5",
 	"description": "Bitfocus Companion module for controlling network music players. Works with BluOS.",
 	"main": "main.js",
 	"scripts": {
