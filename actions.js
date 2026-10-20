@@ -102,7 +102,10 @@ module.exports = function (self) {
           type: "textinput",
           id: "selectedStreamUrl",
           label: "Stream URL",
-          regex: "/^https?:\\/\\/.+/",
+          tooltip:
+            "Must start with http:// or https://. Variables are supported.",
+          // No regex: it would reject variables. The URL is checked once the
+          // variables have been parsed.
           useVariables: true,
         },
       ],

@@ -214,13 +214,12 @@ describe("actions", () => {
       assert.equal(instance.isPlaying, true);
     });
 
-    it("roll back the expected state when the player is offline", async () => {
+    it("clear the state instead of rolling back when the connection is lost", async () => {
       const { instance, player } = await setup();
       player.online = false;
       await runAction(instance, "toggleShuffle");
-      assert.equal(instance.isShuffleEnabled, false);
+      assert.equal(instance.isShuffleEnabled, null);
     });
-
     it("roll back the active stream", async () => {
       const { instance, player } = await setup();
       player.httpStatus = 500;

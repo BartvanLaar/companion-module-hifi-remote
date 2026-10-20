@@ -85,6 +85,48 @@ describe("feedbacks", () => {
       );
       assert.equal(result, true);
     });
+
+    it("is false while the player is unreachable", async () => {
+      context = await createInstance();
+      const { instance, player } = context;
+      await runAction(instance, "setStream", {
+        selectedStreamUrl: "https://radio.example/a",
+      });
+      player.online = false;
+      await instance.updateDeviceStatusAsync();
+      assert.equal(
+        await runFeedback(instance, "activeStream", {
+          stream: "https://radio.example/a",
+        }),
+        false,
+      );
+      assert.ok(
+        instance.feedbackChecks.at(-1).feedbackIds.includes("activeStream"),
+      );
+
+      // The stream we started is remembered for when the player is back
+      player.online = true;
+      await instance.updateDeviceStatusAsync();
+      assert.equal(
+        await runFeedback(instance, "activeStream", {
+          stream: "https://radio.example/a",
+        }),
+        true,
+      );
+    });
+  });
+
+  it("stream URL options accept variables", async () => {
+    context = await createInstance();
+    const urlOptions = [
+      context.instance.actionDefinitions.setStream.options[0],
+      context.instance.feedbackDefinitions.activeStream.options[0],
+    ];
+    for (const option of urlOptions) {
+      assert.equal(option.useVariables, true, option.id);
+      // A regex is checked against the unparsed text, e.g. $(internal:x)
+      assert.equal(option.regex, undefined, option.id);
+    }
   });
 });
 
