@@ -5,6 +5,7 @@ const {
   ModuleInstance,
   createInstance,
   InstanceStatus,
+  runAction,
   waitFor,
 } = require("./helpers");
 
@@ -421,6 +422,80 @@ describe("status polling", () => {
 
       player.online = true;
       await waitFor(() => instance.lastStatus === InstanceStatus.Ok);
+    });
+
+    it("clears the player state when the connection is lost", async () => {
+      context = await createInstance();
+      const { instance, player } = context;
+      Object.assign(player, {
+        state: "play",
+        shuffle: 1,
+        repeat: 0,
+        mute: 1,
+        title: "Song",
+      });
+      await instance.updateDeviceStatusAsync();
+      assert.equal(instance.isPlaying, true);
+
+      player.online = false;
+      await instance.updateDeviceStatusAsync();
+      assert.equal(instance.isPlaying, false);
+      assert.equal(instance.isShuffleEnabled, null);
+      assert.equal(instance.isRepeatEnabled, null);
+      assert.equal(instance.isMuted, null);
+      assert.equal(instance.variableValues.title, "");
+      assert.equal(instance.variableValues.volume, "");
+
+      player.online = true;
+      await instance.updateDeviceStatusAsync();
+      assert.equal(instance.isPlaying, true);
+      assert.equal(instance.variableValues.title, "Song");
+    });
+
+    it("reconnects quickly when a long poll was waiting during an outage", async () => {
+      context = await createInstance({ pollIntervalSeconds: 0.01 });
+      const { instance, player } = context;
+      await waitFor(() => player.waitingLongPolls === 1);
+
+      // A command fails during a short network outage, while the player's
+      // state does not change
+      player.online = false;
+      await runAction(instance, "next");
+      assert.equal(instance.lastStatus, InstanceStatus.ConnectionFailure);
+      assert.equal(player.waitingLongPolls, 0);
+
+      player.requests = [];
+      player.online = true;
+      await waitFor(() => instance.lastStatus === InstanceStatus.Ok);
+      assert.equal(player.statusRequests[0].searchParams.has("etag"), false);
+      await waitFor(() => player.waitingLongPolls === 1);
+    });
+
+    it("keeps using plain status requests until the state is known again", async () => {
+      context = await createInstance();
+      const { instance, player } = context;
+      player.state = "play";
+      player.online = false;
+      await instance.updateDeviceStatusAsync();
+      player.online = true;
+
+      // A command is sent while the first status after the outage is underway,
+      // so that status is ignored and the state is still unknown
+      const statusUpdate = instance.updateDeviceStatusAsync({ longPoll: true });
+      instance._commandCount++;
+      await statusUpdate;
+      assert.equal(instance.isPlaying, false);
+      assert.equal(
+        player.statusRequests.at(-1).searchParams.has("etag"),
+        false,
+      );
+
+      await instance.updateDeviceStatusAsync({ longPoll: true });
+      assert.equal(
+        player.statusRequests.at(-1).searchParams.has("etag"),
+        false,
+      );
+      assert.equal(instance.isPlaying, true);
     });
 
     it("logs an offline player once, not on every poll", async () => {

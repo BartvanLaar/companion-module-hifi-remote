@@ -79,7 +79,7 @@ Ready-made buttons are in the **Presets** tab under _Transport_, _Volume_, _Shuf
 - **Multiple players:** add one module instance per player.
 - **Grouped players:** grouped players report the status of the primary player of the group. Control the group through the primary player.
 - **Resume after Stop:** the player can only resume from pause. After **Stop**, start something new instead, e.g. with **Set Stream** or from the BluOS app.
-- **Connection status:** the connection shows _Connection failure_ while the player is unreachable and recovers on its own once the player is back.
+- **Connection status:** the connection shows _Connection failure_ while the player is unreachable and recovers on its own once the player is back. While it is unreachable, buttons show no active state and the variables are empty, so they never show an outdated state.
 - **Troubleshooting:** if buttons do nothing, open `http://<player-ip>:11000/Status` in a browser on the Companion machine. If that doesn't return XML, Companion can't reach the player. Check the IP address, the network/VLAN and any firewall.
 
 ### Privacy

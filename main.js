@@ -42,6 +42,28 @@ const FEEDBACKS_BY_STATE = {
   currentStream: ["activeStream"],
 };
 
+// The player state before the first status, and after the connection is lost.
+// The active stream is not included: it is what we started, not what the
+// player reported, and stays valid while the player is briefly unreachable.
+const UNKNOWN_PLAYER_STATE = Object.freeze({
+  playbackSource: null,
+  playState: null,
+  isPlaying: false,
+  isShuffleEnabled: null,
+  isRepeatEnabled: null,
+  isRepeatCurrentTrack: null,
+  isRepeatCurrentQueue: null,
+  isMuted: null,
+  volume: null,
+  title: null,
+  artist: null,
+  album: null,
+  nowPlayingLine1: null,
+  nowPlayingLine2: null,
+  nowPlayingLine3: null,
+  artworkUrl: null,
+});
+
 class ModuleInstance extends InstanceBase {
   constructor(internal) {
     super(internal);
@@ -53,29 +75,17 @@ class ModuleInstance extends InstanceBase {
     this._statusEtag = null;
     this._pollGeneration = 0;
     this._pollAbortController = null;
+    this._statusRequestAbortController = null;
     this._commandCount = 0;
+    this._stateResetCount = 0;
+    this._isStateUnknown = true;
     this._variableValues = {};
     this._lastStatusRequestAt = 0;
     this.minStatusRequestSpacingMs = MIN_STATUS_REQUEST_SPACING_MS;
     this.minRegularPollIntervalSeconds = MIN_REGULAR_POLL_INTERVAL_SECONDS;
     this.pollIntervalSeconds = DEFAULTS.pollIntervalSeconds;
     this.currentStream = null;
-    this.playbackSource = null;
-    this.playState = null;
-    this.isPlaying = false;
-    this.isShuffleEnabled = null;
-    this.isRepeatEnabled = null;
-    this.isRepeatCurrentTrack = null;
-    this.isRepeatCurrentQueue = null;
-    this.isMuted = null;
-    this.volume = null;
-    this.title = null;
-    this.artist = null;
-    this.album = null;
-    this.nowPlayingLine1 = null;
-    this.nowPlayingLine2 = null;
-    this.nowPlayingLine3 = null;
-    this.artworkUrl = null;
+    Object.assign(this, UNKNOWN_PLAYER_STATE);
   }
 
   async init(config) {
@@ -124,6 +134,10 @@ class ModuleInstance extends InstanceBase {
     return this._pollAbortController !== null;
   }
 
+  get isConnected() {
+    return this._isConnected;
+  }
+
   get baseUrl() {
     return `http://${this.config.host}:${this.config.port}`;
   }
@@ -141,7 +155,15 @@ class ModuleInstance extends InstanceBase {
         InstanceStatus.ConnectionFailure,
         `Cannot reach ${this.config.host}:${this.config.port}`,
       );
+      // Don't show the last known state as if it were current
+      this._stateResetCount++;
+      this._isStateUnknown = true;
+      this.updateState(UNKNOWN_PLAYER_STATE);
+      // A long poll can be held for up to 100 seconds when nothing changes on
+      // the player, so cancel it and reconnect with a plain status request
+      this._statusRequestAbortController?.abort();
     }
+    this.checkFeedbacks("activeStream");
   }
 
   /**
@@ -222,10 +244,14 @@ class ModuleInstance extends InstanceBase {
     }
 
     this._commandCount++;
+    const stateResetCount = this._stateResetCount;
     this.updateState(expectedState);
     const response = await this.requestAsync(path, errorDescription);
     if (!response) {
-      this.updateState(previousState);
+      // Unless the connection was lost meanwhile, which already reset the state
+      if (stateResetCount === this._stateResetCount) {
+        this.updateState(previousState);
+      }
       return false;
     }
     return true;
@@ -362,7 +388,9 @@ class ModuleInstance extends InstanceBase {
   async updateDeviceStatusAsync({ longPoll = false, signal } = {}) {
     let path = "/Status";
     let timeoutMs = REQUEST_TIMEOUT_MS;
-    if (longPoll && this._statusEtag) {
+    // After the connection was lost, get the full status with a plain request
+    // first, instead of a long poll that is held until something changes
+    if (longPoll && this._statusEtag && !this._isStateUnknown) {
       path += `?timeout=${LONG_POLL_TIMEOUT_SECONDS}&etag=${encodeURIComponent(this._statusEtag)}`;
       timeoutMs = LONG_POLL_TIMEOUT_SECONDS * 1000 + LONG_POLL_GRACE_MS;
     }
@@ -401,6 +429,7 @@ class ModuleInstance extends InstanceBase {
     }
 
     this._statusEtag = status["@_etag"] ?? null;
+    this._isStateUnknown = false;
     this.applyDeviceStatus(status);
     return true;
   }
@@ -496,14 +525,21 @@ class ModuleInstance extends InstanceBase {
         }
       }
 
+      // Lets a lost connection cancel this request without stopping the loop
+      const requestAbortController = new AbortController();
+      this._statusRequestAbortController = requestAbortController;
       try {
         isUpdated = await this.updateDeviceStatusAsync({
           longPoll: true,
-          signal,
+          signal: AbortSignal.any([signal, requestAbortController.signal]),
         });
       } catch (e) {
         this.log("error", `Status poll error: ${e}`);
         isUpdated = false;
+      } finally {
+        if (this._statusRequestAbortController === requestAbortController) {
+          this._statusRequestAbortController = null;
+        }
       }
     }
   }

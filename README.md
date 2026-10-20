@@ -13,7 +13,7 @@ A [Bitfocus Companion](https://bitfocus.io/companion) module for controlling net
 - Variables for the volume, play state, track info, now playing lines and cover art
 - Ready-made presets for transport, volume and shuffle/repeat buttons, plus a preset for each station in your own stream list
 
-The module uses the player's built-in HTTP API on port 11000, so you don't need an account or a cloud connection.
+The module uses the player's built-in HTTP API (port 11000 by default, configurable in the connection settings), so you don't need an account or a cloud connection.
 
 ## Usage
 
