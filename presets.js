@@ -1,11 +1,8 @@
 const { combineRgb } = require("@companion-module/base");
+const { activeStyle } = require("./feedbacks");
 
 const white = combineRgb(255, 255, 255);
 const black = combineRgb(0, 0, 0);
-const activeStyle = {
-  bgcolor: combineRgb(0, 153, 51),
-  color: white,
-};
 
 /**
  * Parses the "Stream presets" config field: entries of `Name=URL`, separated

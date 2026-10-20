@@ -67,12 +67,12 @@ module.exports = function (self) {
           id: "stream",
           type: "textinput",
           label: "Stream URL",
-          regex: "/^https?:\\/\\/.+/",
+          // No regex: it would reject variables
           useVariables: true,
         },
       ],
       callback: async (feedback, context) => {
-        if (!self.currentStream) {
+        if (!self.currentStream || self.isConnected === false) {
           return false;
         }
         const stream = await context.parseVariablesInString(
@@ -123,3 +123,4 @@ module.exports = function (self) {
     },
   });
 };
+module.exports.activeStyle = activeStyle;
