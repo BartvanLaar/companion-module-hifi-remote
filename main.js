@@ -32,7 +32,8 @@ const REPEAT_OFF = 2;
 
 // Which feedbacks have to be re-evaluated when a piece of state changes
 const FEEDBACKS_BY_STATE = {
-  isPlaying: ["playbackState"],
+  isPlaying: ["playbackState", "playState"],
+  playState: ["playState"],
   isShuffleEnabled: ["isShuffleEnabled"],
   isRepeatEnabled: ["isRepeatEnabled"],
   isRepeatCurrentTrack: ["isRepeatCurrentTrack"],
@@ -277,6 +278,7 @@ class ModuleInstance extends InstanceBase {
   async stopAsync() {
     await this.sendCommandAsync("/Stop", "Error stopping music", {
       isPlaying: false,
+      playState: "stop",
     });
   }
 
@@ -289,6 +291,7 @@ class ModuleInstance extends InstanceBase {
   async pauseAsync() {
     await this.sendCommandAsync("/Pause", "Error pausing music", {
       isPlaying: false,
+      playState: "pause",
     });
   }
 
