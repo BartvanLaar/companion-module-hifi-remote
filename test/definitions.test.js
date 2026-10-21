@@ -116,6 +116,59 @@ describe("feedbacks", () => {
     });
   });
 
+  describe("playState", () => {
+    const playStates = async (instance) => ({
+      playing: await runFeedback(instance, "playState", { state: "playing" }),
+      paused: await runFeedback(instance, "playState", { state: "paused" }),
+      stopped: await runFeedback(instance, "playState", { state: "stopped" }),
+    });
+
+    for (const [state, expected] of [
+      ["play", { playing: true, paused: false, stopped: false }],
+      ["stream", { playing: true, paused: false, stopped: false }],
+      ["pause", { playing: false, paused: true, stopped: false }],
+      ["stop", { playing: false, paused: false, stopped: true }],
+      ["connecting", { playing: false, paused: false, stopped: false }],
+    ]) {
+      it(`matches the player state "${state}"`, async () => {
+        context = await createInstance();
+        const { instance, player } = context;
+        player.state = state;
+        await instance.updateDeviceStatusAsync();
+        assert.deepEqual(await playStates(instance), expected);
+      });
+    }
+
+    it("shows paused and stopped as soon as the command is sent", async () => {
+      context = await createInstance();
+      const { instance } = context;
+      instance.isPlaying = true;
+      await runAction(instance, "pause");
+      assert.equal((await playStates(instance)).paused, true);
+      await runAction(instance, "stopPlayback");
+      assert.equal((await playStates(instance)).stopped, true);
+      assert.ok(
+        instance.feedbackChecks.some((check) =>
+          check.feedbackIds.includes("playState"),
+        ),
+      );
+    });
+
+    it("is false for every state once the player is unreachable", async () => {
+      context = await createInstance();
+      const { instance, player } = context;
+      player.state = "stop";
+      await instance.updateDeviceStatusAsync();
+      player.online = false;
+      await instance.updateDeviceStatusAsync();
+      assert.deepEqual(await playStates(instance), {
+        playing: false,
+        paused: false,
+        stopped: false,
+      });
+    });
+  });
+
   it("stream URL options accept variables", async () => {
     context = await createInstance();
     const urlOptions = [

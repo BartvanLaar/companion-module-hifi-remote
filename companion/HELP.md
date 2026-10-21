@@ -40,6 +40,7 @@ You can find the player's IP address in the player's app under _Settings → Dia
 | Feedback                     | Active when…                                                                                                       |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | Playback State (Playing)     | The player is playing.                                                                                             |
+| Play State                   | The player is in the chosen state: playing, paused or stopped. Use it to tell paused apart from stopped.           |
 | Shuffle Enabled              | Shuffle is on.                                                                                                     |
 | Repeat Enabled               | Any repeat mode is on.                                                                                             |
 | Repeat Current Track Enabled | Repeat track is on.                                                                                                |
