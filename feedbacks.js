@@ -17,6 +17,38 @@ module.exports = function (self) {
         return self.isPlaying === true;
       },
     },
+    playState: {
+      name: "Play State",
+      type: "boolean",
+      description:
+        "True when the player is playing, paused or stopped, as chosen. Unlike Playback State, this tells paused apart from stopped",
+      defaultStyle: activeStyle,
+      options: [
+        {
+          id: "state",
+          type: "dropdown",
+          label: "State",
+          choices: [
+            { id: "playing", label: "Playing" },
+            { id: "paused", label: "Paused" },
+            { id: "stopped", label: "Stopped" },
+          ],
+          default: "playing",
+        },
+      ],
+      callback: (feedback) => {
+        switch (feedback.options.state) {
+          case "playing":
+            return self.isPlaying === true;
+          case "paused":
+            return self.isPlaying !== true && self.playState === "pause";
+          case "stopped":
+            return self.isPlaying !== true && self.playState === "stop";
+          default:
+            return false;
+        }
+      },
+    },
     isShuffleEnabled: {
       name: "Shuffle Enabled",
       type: "boolean",
