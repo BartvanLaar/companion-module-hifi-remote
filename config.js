@@ -66,7 +66,7 @@ function GetConfigurationFields(self) {
       type: "textinput",
       label: "Stream presets",
       tooltip:
-        "Your own stations, as Name=URL separated by semicolons, e.g. My Radio=https://radio.example/live; Jazz=https://jazz.example/stream. Each one becomes a button in the Presets tab under Streams.",
+        "Your own stations, as Name=URL separated by semicolons, e.g. My Radio=https://radio.example/live; Jazz=https://jazz.example/stream. Add |LogoURL after the URL to show the station logo on the player, e.g. Jazz=https://jazz.example/stream|https://jazz.example/logo.png. Each one becomes a button in the Presets tab under Streams.",
       default: DEFAULTS.streamPresets,
     },
   ];

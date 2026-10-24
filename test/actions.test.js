@@ -269,6 +269,44 @@ describe("actions", () => {
       assert.equal(instance.currentStream, null);
     });
 
+    it("sends the station name and logo", async () => {
+      const { instance, player } = await setup();
+      const image = "https://radio.example/logo.png?size=512&v=2";
+      await runAction(
+        instance,
+        "setStream",
+        {
+          selectedStreamUrl: "https://radio.example/live",
+          stationName: " $(internal:name) ",
+          imageUrl: image,
+        },
+        { "internal:name": "Radio & Co" },
+      );
+      const playRequest = player.requests.find((u) => u.pathname === "/Play");
+      assert.equal(
+        playRequest.searchParams.get("url"),
+        "https://radio.example/live",
+      );
+      assert.equal(playRequest.searchParams.get("title"), "Radio & Co");
+      assert.equal(playRequest.searchParams.get("image"), image);
+    });
+
+    it("plays without a logo when the image URL is not http(s)", async () => {
+      const { instance, player } = await setup();
+      await runAction(instance, "setStream", {
+        selectedStreamUrl: "https://radio.example/live",
+        imageUrl: "javascript:alert(1)",
+      });
+      const playRequest = player.requests.find((u) => u.pathname === "/Play");
+      assert.equal(playRequest.searchParams.has("image"), false);
+      assert.equal(instance.currentStream, "https://radio.example/live");
+      assert.ok(
+        instance.logs.some(
+          (log) => log.level === "warn" && /image URL/.test(log.message),
+        ),
+      );
+    });
+
     it("does not play when the URL is empty", async () => {
       const { instance, player } = await setup();
       await runAction(instance, "setStream", { selectedStreamUrl: "  " });

@@ -285,6 +285,30 @@ describe("stream presets", () => {
     );
   });
 
+  it("pass the station name and logo to the action", async () => {
+    context = await createInstance({
+      streamPresets:
+        "Jazz=https://jazz.example/live|https://jazz.example/logo.png; Rock=https://rock.example/live",
+    });
+    assert.deepEqual(
+      streamPresets(context.instance).map(
+        (preset) => preset.steps[0].down[0].options,
+      ),
+      [
+        {
+          selectedStreamUrl: "https://jazz.example/live",
+          stationName: "Jazz",
+          imageUrl: "https://jazz.example/logo.png",
+        },
+        {
+          selectedStreamUrl: "https://rock.example/live",
+          stationName: "Rock",
+          imageUrl: "",
+        },
+      ],
+    );
+  });
+
   it("skips invalid entries with a warning", async () => {
     context = await createInstance({
       streamPresets:
@@ -322,6 +346,33 @@ describe("parseStreamPresets", () => {
     assert.deepEqual(parseStreamPresets("A=http://a.example/?x=1=2").streams, [
       { label: "A", url: "http://a.example/?x=1=2" },
     ]);
+  });
+
+  it("reads an optional logo URL after a |", () => {
+    assert.deepEqual(
+      parseStreamPresets("A = https://a.example/live | https://a.example/l.png")
+        .streams,
+      [
+        {
+          label: "A",
+          url: "https://a.example/live",
+          image: "https://a.example/l.png",
+        },
+      ],
+    );
+  });
+
+  it("rejects invalid logo URLs", () => {
+    for (const entry of [
+      "A=https://a.example|ftp://a.example/l.png",
+      "A=https://a.example|",
+      "A=https://a.example|https://a.example/l.png|https://x.example",
+    ]) {
+      assert.deepEqual(parseStreamPresets(entry), {
+        streams: [],
+        invalidEntries: [entry],
+      });
+    }
   });
 
   it("trims names and URLs", () => {

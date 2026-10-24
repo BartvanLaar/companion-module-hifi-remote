@@ -108,12 +108,33 @@ module.exports = function (self) {
           // variables have been parsed.
           useVariables: true,
         },
+        {
+          type: "textinput",
+          id: "stationName",
+          label: "Station name (optional)",
+          tooltip:
+            "Shown by the player while the stream sends no name of its own. Variables are supported.",
+          useVariables: true,
+        },
+        {
+          type: "textinput",
+          id: "imageUrl",
+          label: "Station logo URL (optional)",
+          tooltip:
+            "An http(s) link to an image, shown as the artwork on the player and in the BluOS app. The player downloads it itself. Variables are supported.",
+          useVariables: true,
+        },
       ],
       callback: async (event, context) => {
-        const streamUrl = await context.parseVariablesInString(
-          event.options.selectedStreamUrl ?? "",
+        const [streamUrl, title, image] = await Promise.all(
+          ["selectedStreamUrl", "stationName", "imageUrl"].map((id) =>
+            context.parseVariablesInString(event.options[id] ?? ""),
+          ),
         );
-        await self.setStreamSourceAsync(streamUrl.trim());
+        await self.setStreamSourceAsync(streamUrl.trim(), {
+          title: title.trim(),
+          image: image.trim(),
+        });
       },
     },
   };
