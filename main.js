@@ -258,7 +258,12 @@ class ModuleInstance extends InstanceBase {
     return true;
   }
 
-  async setStreamSourceAsync(streamUrl) {
+  /**
+   * Plays a stream URL. The optional title and image are shown by the player
+   * (on its display and in the BluOS app) as the station name and logo.
+   * Metadata sent by the stream itself takes precedence over the title.
+   */
+  async setStreamSourceAsync(streamUrl, { title, image } = {}) {
     if (!streamUrl) {
       this.log("error", "No stream URL provided");
       return;
@@ -268,11 +273,23 @@ class ModuleInstance extends InstanceBase {
       return;
     }
 
-    await this.sendCommandAsync(
-      `/Play?url=${encodeURIComponent(streamUrl)}`,
-      "Error playing stream",
-      { currentStream: streamUrl, isPlaying: true },
-    );
+    let path = `/Play?url=${encodeURIComponent(streamUrl)}`;
+    if (title) {
+      path += `&title=${encodeURIComponent(title)}`;
+    }
+    if (image) {
+      if (isHttpUrl(image)) {
+        path += `&image=${encodeURIComponent(image)}`;
+      } else {
+        // Still play the stream, just without the logo
+        this.log("warn", `Not an http(s) image URL, ignoring it: ${image}`);
+      }
+    }
+
+    await this.sendCommandAsync(path, "Error playing stream", {
+      currentStream: streamUrl,
+      isPlaying: true,
+    });
   }
 
   async stopAsync() {

@@ -4,9 +4,12 @@ const { activeStyle } = require("./feedbacks");
 const white = combineRgb(255, 255, 255);
 const black = combineRgb(0, 0, 0);
 
+const HTTP_URL = /^https?:\/\/.+/;
+
 /**
- * Parses the "Stream presets" config field: entries of `Name=URL`, separated
- * by semicolons. Returns the valid streams and the entries that were skipped.
+ * Parses the "Stream presets" config field: entries of `Name=URL`, or
+ * `Name=URL|LogoURL`, separated by semicolons. Returns the valid streams and
+ * the entries that were skipped.
  */
 function parseStreamPresets(text) {
   const streams = [];
@@ -21,23 +24,41 @@ function parseStreamPresets(text) {
     // Split on the first "=", URLs can contain "=" in their query string
     const separatorIndex = trimmedEntry.indexOf("=");
     const label = trimmedEntry.slice(0, separatorIndex).trim();
-    const url = trimmedEntry.slice(separatorIndex + 1).trim();
-    if (separatorIndex < 1 || !label || !/^https?:\/\/.+/.test(url)) {
+    const [url, image, ...rest] = trimmedEntry
+      .slice(separatorIndex + 1)
+      .split("|")
+      .map((part) => part.trim());
+    if (
+      separatorIndex < 1 ||
+      !label ||
+      !HTTP_URL.test(url) ||
+      (image !== undefined && !HTTP_URL.test(image)) ||
+      rest.length > 0
+    ) {
       invalidEntries.push(trimmedEntry);
       continue;
     }
-    streams.push({ label, url });
+    streams.push(image ? { label, url, image } : { label, url });
   }
 
   return { streams, invalidEntries };
 }
 
-function streamPreset({ label, url }) {
+function streamPreset({ label, url, image }) {
   return {
     ...buttonPreset("Streams", label, label, "setStream"),
     steps: [
       {
-        down: [{ actionId: "setStream", options: { selectedStreamUrl: url } }],
+        down: [
+          {
+            actionId: "setStream",
+            options: {
+              selectedStreamUrl: url,
+              stationName: label,
+              imageUrl: image ?? "",
+            },
+          },
+        ],
         up: [],
       },
     ],
@@ -83,7 +104,7 @@ function UpdatePresets(self) {
   for (const entry of invalidEntries) {
     self.log(
       "warn",
-      `Ignoring stream preset "${entry}", use Name=https://stream-url`,
+      `Ignoring stream preset "${entry}", use Name=https://stream-url or Name=https://stream-url|https://logo-url`,
     );
   }
 
