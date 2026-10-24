@@ -7,7 +7,7 @@ A [Bitfocus Companion](https://bitfocus.io/companion) module for controlling net
 - Play, pause, stop, next and previous track
 - Volume up/down in configurable dB steps, set a fixed volume, mute and unmute
 - Shuffle and repeat (queue, track, off)
-- Play any internet radio or audio stream by URL
+- Play any internet radio or audio stream by URL, optionally with a station name and logo that the player shows on its display
 - Instant updates: changes made in the BluOS app or on the player show up on your buttons straight away
 - Feedbacks for the play state (playing, paused or stopped), mute, shuffle, repeat, active stream and playback source (stream, Spotify, Bluetooth)
 - Variables for the volume, play state, track info, now playing lines and cover art
